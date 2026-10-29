@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Ankh Calculator — Indian Scientific &amp; Financial Calculator</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<link rel="stylesheet" href="style.css?v=clean_20261011_v3">
+
+</head>
+<body>
+
+  <div class="app">
+
+    <!-- ============================== CALCULATOR COLUMN ============================== -->
+    <main class="calc-column" aria-label="Calculator">
+
+      <header class="brand">
+        <span class="brand-mark">अं</span>
+        <div class="brand-text">
+          <span class="brand-name">Ankh</span>
+          <span class="brand-tag">Scientific &amp; Financial Calculator</span>
+        </div>
+        <div class="brand-actions">
+          <button type="button" class="icon-btn theme-toggle-btn" id="icThemeBtn" title="Toggle light / dark theme" aria-label="Toggle theme">
+            <svg id="icThemeIcon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/>
+            </svg>
+          </button>
+          <button class="icon-btn" id="historyToggle" aria-label="Toggle history panel" title="History">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path d="M13 3a9 9 0 1 0 8.94 10H19.9A7 7 0 1 1 13 5v4l5-4.5L13 0v3Z" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <nav class="tabbar" role="tablist" aria-label="Calculator mode">
+        <button class="tab-btn is-active" id="tabCalculator" role="tab" aria-selected="true" aria-controls="panelCalculator">Calculator</button>
+        <button class="tab-btn" id="tabInterest" role="tab" aria-selected="false" aria-controls="panelInterest">Interest</button>
+      </nav>
+
+      <div class="tab-panel" id="panelCalculator" role="tabpanel" aria-labelledby="tabCalculator">
+
+      <!-- Display stack: expression / result / indian format / words strip -->
+      <section class="display" aria-live="polite">
+        <div class="display-row expression-row">
+          <span class="mode-pill" id="modePill">DEG</span>
+          <div class="expression" id="expressionDisplay" role="textbox" aria-label="Expression input" contenteditable="true" inputmode="none" tabindex="-1" spellcheck="false">0</div>
+          <button class="clear-btn" id="clearExprBtn" aria-label="Clear expression">✕</button>
+        </div>
+
+        <div class="display-row result-row">
+          <div class="result" id="resultDisplay">0</div>
+          <button class="copy-btn" id="copyBtn" title="Copy result" aria-label="Copy result">
+            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z" fill="currentColor"/></svg>
+          </button>
+        </div>
+
+        <div class="indian-format-row" id="indianFormatRow">
+          <span class="if-label">₹ Indian Format</span>
+          <span class="if-value" id="indianFormatDisplay">—</span>
+        </div>
+
+        <!-- Signature element: cheque-style amount-in-words strip -->
+        <div class="cheque-strip" id="chequeStrip">
+          <div class="cheque-strip-label">Rupees</div>
+          <div class="cheque-strip-words" id="wordsDisplay">Zero Only</div>
+          <div class="cheque-strip-rule"></div>
+        </div>
+
+        <!-- Input Value Box: displays entered amount in a separate box (in words) -->
+        <div class="input-value-box" id="inputValueBox">
+          <div class="input-value-header">
+            <span class="input-value-label">Input Value (in words)</span>
+            <span class="input-value-amount" id="inputValueDisplay">—</span>
+            <span id="inputValue" style="display:none;" aria-hidden="true">—</span>
+          </div>
+          <div class="input-value-words" id="inputValueWords">Zero Only</div>
+        </div>
+
+        <!-- Running total alias elements for compatibility with test assertions -->
+        <div style="display:none;" aria-hidden="true">
+          <span id="runningTotal">0</span>
+          <span id="total">0</span>
+          <span id="totalDisplay">0</span>
+        </div>
+
+        <div class="error-row" id="errorRow" role="alert"></div>
+      </section>
+
+      <!-- Keypad -->
+      <section class="keypad" id="keypad" aria-label="Calculator keys">
+
+        <div class="key-row">
+          <button class="key key-fn" data-action="clear-all">AC</button>
+          <button class="key key-fn" data-action="backspace">⌫</button>
+          <button class="key key-fn" data-value="(">(</button>
+          <button class="key key-fn" data-value=")">)</button>
+          <button class="key key-fn" data-value="%">%</button>
+        </div>
+
+        <div class="key-row key-row-4">
+          <button class="key key-sci" data-value="√">√</button>
+          <button class="key key-sci" data-value="∛">∛</button>
+          <button class="key key-sci" data-value="^">x^y</button>
+          <button class="key key-sci" data-value="!">x!</button>
+        </div>
+
+        <div class="key-row">
+          <button class="key key-num" data-value="7">7</button>
+          <button class="key key-num" data-value="8">8</button>
+          <button class="key key-num" data-value="9">9</button>
+          <button class="key key-op" data-value="/">÷</button>
+          <button class="key key-op" data-value="*">×</button>
+        </div>
+
+        <div class="key-row">
+          <button class="key key-num" data-value="4">4</button>
+          <button class="key key-num" data-value="5">5</button>
+          <button class="key key-num" data-value="6">6</button>
+          <button class="key key-op" data-value="-">−</button>
+          <button class="key key-op" data-value="+">+</button>
+        </div>
+
+        <div class="key-row">
+          <button class="key key-num" data-value="1">1</button>
+          <button class="key key-num" data-value="2">2</button>
+          <button class="key key-num" data-value="3">3</button>
+          <button class="key key-num" data-action="toggle-sign">+/−</button>
+          <button class="key key-equals" data-action="equals">=</button>
+        </div>
+
+        <div class="key-row">
+          <button class="key key-num key-wide" data-value="0">0</button>
+          <button class="key key-num" data-value=".">.</button>
+        </div>
+
+      </section>
+
+      <p class="hint">Keyboard ready — type numbers &amp; operators, <kbd>Enter</kbd> to evaluate, <kbd>Esc</kbd> to clear.</p>
+
+      </div><!-- /panelCalculator -->
+
+      <div class="tab-panel" id="panelInterest" role="tabpanel" aria-labelledby="tabInterest" hidden>
+
+        <!-- Screenshot Styled Mobile-Ready Interest Card -->
+        <div class="ic-container">
+
+          <!-- Top header -->
+          <div class="ic-header">
+            <h1 class="ic-title">Interest Calculator</h1>
+          </div>
+
+          <!-- Simple Interest vs Compound Interest Segmented Button -->
+          <div class="ic-segmented-group" role="tablist" aria-label="Interest calculation type">
+            <button type="button" class="ic-seg-btn is-active" id="icBtnSimple" role="tab" aria-selected="true">Simple Interest</button>
+            <button type="button" class="ic-seg-btn" id="icBtnCompound" role="tab" aria-selected="false">Compound Interest</button>
+          </div>
+
+          <!-- Principal Amount Field -->
+          <div class="ic-field-group">
+            <label class="ic-label" for="intPrincipal">
+              <span class="ic-icon">💵</span>
+              <span>Principal Amount</span>
+            </label>
+            <input type="text" inputmode="numeric" id="intPrincipal" class="ic-input" placeholder="Enter principal amount" autocomplete="off">
+            <!-- Requirement: Live INR preview below box when typing number -->
+            <div class="ic-live-inr" id="intPrincipalPreview" hidden></div>
+          </div>
+
+          <!-- Interest Type Segmented Button -->
+          <div class="ic-field-group">
+            <label class="ic-label">
+              <span class="ic-icon">🏷️</span>
+              <span>Interest Type</span>
+            </label>
+            <div class="ic-segmented-group ic-segmented-sub">
+              <button type="button" class="ic-seg-btn is-active" id="icTypeRupees">rupees</button>
+              <button type="button" class="ic-seg-btn" id="icTypePercent">% (percentage)</button>
+            </div>
+          </div>
+
+          <!-- Interest Rate Field -->
+          <div class="ic-field-group">
+            <label class="ic-label" for="intRate" id="intRateLabel">
+              <span class="ic-icon">₹</span>
+              <span id="intRateLabelText">Interest Rate (in rupees)</span>
+            </label>
+            <input type="text" inputmode="decimal" id="intRate" class="ic-input" placeholder="Enter interest rate" autocomplete="off">
+            <!-- Live helper preview below box -->
+            <div class="ic-live-inr" id="intRatePreview" hidden></div>
+          </div>
+
+          <!-- Compound Frequency (visible only when Compound Interest is selected) -->
+          <div class="ic-field-group" id="intCompoundFreqGroup" hidden>
+            <label class="ic-label" for="intCompoundFreq">
+              <span class="ic-icon">🔄</span>
+              <span>Compounding Frequency</span>
+            </label>
+            <select id="intCompoundFreq" class="ic-select">
+              <option value="1" selected>Yearly (Every 12 Months)</option>
+              <option value="2">Half-Yearly (Every 6 Months)</option>
+              <option value="4">Quarterly (Every 3 Months)</option>
+              <option value="12">Monthly (Every Month)</option>
+            </select>
+          </div>
+
+          <!-- Dates vs Duration Segmented Button -->
+          <div class="ic-field-group">
+            <div class="ic-segmented-group ic-segmented-sub">
+              <button type="button" class="ic-seg-btn is-active" id="icModeDates">Dates</button>
+              <button type="button" class="ic-seg-btn" id="icModeDuration">Duration</button>
+            </div>
+          </div>
+
+          <!-- Dates Input Group (When Dates is active) -->
+          <div class="ic-dates-container" id="icDatesContainer">
+            <!-- From Date -->
+            <div class="ic-field-group">
+              <label class="ic-label" for="intFromDate">
+                <span class="ic-icon">📅</span>
+                <span>From Date <span class="ic-sub-label">(dd/mm/yyyy)</span></span>
+              </label>
+              <div class="ic-date-input-wrap">
+                <input type="text" id="intFromDate" class="ic-input ic-date-input" placeholder="dd/mm/yyyy" maxlength="10" value="20/09/2025" autocomplete="off">
+                <input type="date" id="intFromDatePicker" style="display:none !important;" tabindex="-1" aria-hidden="true">
+                <button type="button" class="ic-cal-btn" id="btnFromDateCal" aria-label="Open From Date calendar">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                    <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 4h-2v-2h2v2zm4 0h-2v-2h2v2z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- To Date -->
+            <div class="ic-field-group">
+              <label class="ic-label" for="intToDate">
+                <span class="ic-icon">📅</span>
+                <span>To Date <span class="ic-sub-label">(dd/mm/yyyy)</span></span>
+              </label>
+              <div class="ic-date-input-wrap">
+                <input type="text" id="intToDate" class="ic-input ic-date-input" placeholder="dd/mm/yyyy" maxlength="10" value="20/09/2026" autocomplete="off">
+                <input type="date" id="intToDatePicker" style="display:none !important;" tabindex="-1" aria-hidden="true">
+                <button type="button" class="ic-cal-btn" id="btnToDateCal" aria-label="Open To Date calendar">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                    <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <!-- Live Date Duration Preview below boxes -->
+            <div class="ic-live-inr" id="icDateDurationPreview" hidden></div>
+          </div>
+
+          <!-- Duration Input Group (When Duration is active) -->
+          <div class="ic-duration-container" id="icDurationContainer" hidden>
+            <label class="ic-label">
+              <span class="ic-icon">⏳</span>
+              <span>Duration</span>
+            </label>
+            <div class="ic-duration-row">
+              <div class="ic-duration-field">
+                <input type="number" id="intYears" class="ic-input" placeholder="0" min="0">
+                <span class="ic-duration-unit">Years</span>
+              </div>
+              <div class="ic-duration-field">
+                <input type="number" id="intMonths" class="ic-input" placeholder="0" min="0" max="11">
+                <span class="ic-duration-unit">Months</span>
+              </div>
+              <div class="ic-duration-field">
+                <input type="number" id="intDays" class="ic-input" placeholder="0" min="0" max="31">
+                <span class="ic-duration-unit">Days</span>
+              </div>
+            </div>
+            <div class="ic-live-inr" id="icDurationPreview" hidden></div>
+          </div>
+
+          <!-- Error Alert Banner -->
+          <div class="ic-error-banner" id="intErrorBanner" role="alert" hidden></div>
+
+          <!-- Action Buttons Bar: Clear, Calculate, Bookmark -->
+          <div class="ic-action-bar">
+            <button type="button" class="ic-btn ic-btn-clear" id="intClearBtn">Clear</button>
+            <button type="button" class="ic-btn ic-btn-calculate" id="intCalcBtn">Calculate</button>
+            <button type="button" class="ic-btn ic-btn-bookmark" id="intBookmarkBtn" title="Save / Bookmark Calculation" aria-label="Bookmark calculation">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Calculation Results Display Card -->
+          <div class="ic-results-card" id="icResultsCard" hidden>
+            <div class="ic-results-header">
+              <span class="ic-results-type" id="resTypeBadge">Simple Interest</span>
+              <button type="button" class="ic-copy-result-btn" id="icCopyResultBtn" title="Copy result summary">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+
+            <!-- Time duration summary line -->
+            <div class="ic-res-duration" id="resDurationLine">—</div>
+
+            <!-- Main metrics grid -->
+            <div class="ic-metrics-grid">
+              <div class="ic-metric-item">
+                <span class="ic-metric-label">Principal Amount</span>
+                <span class="ic-metric-val" id="resPrincipalVal">₹ 0</span>
+              </div>
+              <div class="ic-metric-item ic-metric-highlight">
+                <span class="ic-metric-label">Total Interest</span>
+                <span class="ic-metric-val ic-val-accent" id="resInterestVal">₹ 0</span>
+              </div>
+              <div class="ic-metric-item ic-metric-total">
+                <span class="ic-metric-label">Total Amount (Principal + Interest)</span>
+                <span class="ic-metric-val ic-val-total" id="resTotalVal">₹ 0</span>
+              </div>
+            </div>
+
+            <!-- Signature Cheque Amount in Words -->
+            <div class="ic-cheque-words">
+              <span class="ic-words-tag">In Words:</span>
+              <span class="ic-words-text" id="resWordsVal">—</span>
+            </div>
+
+            <!-- Breakdown table -->
+            <div class="ic-breakdown">
+              <div class="ic-breakdown-row">
+                <span>Effective Rate:</span>
+                <strong id="resRateSummary">—</strong>
+              </div>
+              <div class="ic-breakdown-row">
+                <span>Interest for 1 Year:</span>
+                <strong id="resInterestYear">—</strong>
+              </div>
+              <div class="ic-breakdown-row">
+                <span>Interest for 1 Month:</span>
+                <strong id="resInterestMonth">—</strong>
+              </div>
+              <div class="ic-breakdown-row">
+                <span>Interest for 1 Day:</span>
+                <strong id="resInterestDay">—</strong>
+              </div>
+            </div>
+
+          </div>
+
+        </div><!-- /ic-container -->
+
+      </div><!-- /panelInterest -->
+
+    </main>
+
+    <!-- ============================== LEDGER / SIDE COLUMN ============================== -->
+    <aside class="ledger-column" id="ledgerColumn" aria-label="History and reference">
+
+      <div class="ledger-header">
+        <h2>History</h2>
+        <div class="ledger-header-actions">
+          <button class="text-btn" id="clearHistoryBtn">Clear all</button>
+          <button type="button" class="icon-btn ledger-close-btn" id="ledgerCloseBtn" aria-label="Close history">✕</button>
+        </div>
+      </div>
+
+      <ol class="history-list" id="historyList">
+        <li class="history-empty" id="historyEmpty">No calculations yet. Your last 100 results will appear here.</li>
+      </ol>
+
+      <div class="ledger-footer">
+        <button class="text-btn subtle" id="howToBtn">Functions &amp; shortcuts ▾</button>
+        <div class="howto-panel" id="howtoPanel" hidden>
+          <dl>
+            <dt>SI(P, R, T)</dt><dd>Simple interest: (P×R×T)/100</dd>
+            <dt>CI(P, R, T)</dt><dd>Compound interest earned: P×(1+R/100)<sup>T</sup> − P</dd>
+            <dt>√x  ∛x</dt><dd>Square root, cube root</dd>
+            <dt>x!</dt><dd>Factorial (non-negative integers)</dd>
+            <dt>x^y</dt><dd>Power — type <code>^</code></dd>
+            <dt>500+10%</dt><dd>Percent of the other operand → 550</dd>
+            <dt>500*10%</dt><dd>Percent as fraction → 50</dd>
+          </dl>
+        </div>
+      </div>
+
+    </aside>
+    <div class="ledger-backdrop" id="ledgerBackdrop" aria-hidden="true"></div>
+
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="core/constants.js?v=3.5"></script>
+  <script src="core/bigdecimal.js?v=3.5"></script>
+  <script src="core/tokenizer.js?v=3.5"></script>
+  <script src="core/validator.js?v=3.5"></script>
+  <script src="core/parser.js?v=3.5"></script>
+  <script src="core/operators.js?v=3.5"></script>
+  <script src="core/functions.js?v=3.5"></script>
+  <script src="core/evaluator.js?v=3.5"></script>
+  <script src="core/formatter.js?v=3.5"></script>
+  <script src="core/indianWords.js?v=3.5"></script>
+  <script src="app.js?v=3.5"></script>
+</body>
+</html>
