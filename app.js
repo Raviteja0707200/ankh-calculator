@@ -131,19 +131,103 @@
   // ===========================================================================
 
   /**
+   * Sanitizes user input: strips markdown backticks, currency symbols (₹, Rs),
+   * trailing equals, normalises multiplication/division glyphs (×, ÷, x),
+   * and removes numeric digit-grouping commas (e.g. 5,00,000 -> 500000) while
+   * keeping function-argument commas for SI(p, r, t) and CI(p, r, t, n).
+   */
+  function cleanExpression(expr) {
+    if (!expr) return '';
+    let s = expr.trim();
+    if (s.includes('\n') || s.includes('\r')) {
+      const lines = s.split(/[\r\n]+/).map((l) => l.trim()).filter(Boolean);
+      if (lines.length > 0) s = lines[0];
+    }
+    s = s.replace(/`/g, '');
+    s = s.replace(/₹\s*|rs\.?\s*|inr\s*/gi, '');
+    s = s.replace(/=+$/, '').trim();
+    s = s.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-');
+    s = s.replace(/(\d|\))\s*[xX]\s*(\d|\()/g, '$1*$2');
+    if (!/SI\s*\(|CI\s*\(/i.test(s)) {
+      s = s.replace(/,/g, '');
+    } else {
+      while (/(\d),(\d{2,3})/.test(s)) {
+        s = s.replace(/(\d),(\d{2,3})/g, '$1$2');
+      }
+    }
+    return s;
+  }
+
+  function rawEvaluate(expr) {
+    const tokens = new Tokenizer(expr).tokenize();
+    new Validator(tokens).validate();
+    const postfix = new Parser(tokens).toPostfix();
+    return new Evaluator(postfix).evaluate();
+  }
+
+  function tryEvaluateIncomplete(cleanExpr) {
+    let s = cleanExpr.trim();
+    s = s.replace(/[+\-*/^.]+$/, '').trim();
+    if (!s) return { ok: false };
+
+    let openCount = 0;
+    for (const ch of s) {
+      if (ch === '(') openCount++;
+      else if (ch === ')') openCount--;
+    }
+    if (openCount > 0) {
+      s = s + ')'.repeat(openCount);
+    }
+
+    try {
+      const value = rawEvaluate(s);
+      return { ok: true, value, expressionUsed: s };
+    } catch (e) {
+      return { ok: false };
+    }
+  }
+
+  function isIncompleteExpression(expr) {
+    if (!expr) return true;
+    const trimmed = expr.trim();
+    if (/^[+\-*/^.()]+$/.test(trimmed)) return true;
+    if (/[+\-*/^.]$/.test(trimmed)) return true;
+    let openCount = 0;
+    for (const ch of trimmed) {
+      if (ch === '(') openCount++;
+      else if (ch === ')') openCount--;
+    }
+    if (openCount > 0) return true;
+    return false;
+  }
+
+  /**
    * Run the full pipeline (tokenize -> validate -> parse -> evaluate) on the
-   * given expression string. Returns { ok: true, value: BigDecimal } or
-   * { ok: false, message: string }.
+   * given expression string. Returns { ok: true, value: BigDecimal, incomplete?: boolean }
+   * or { ok: false, message: string, incomplete?: boolean }.
    */
   function evaluateExpression(expr) {
+    const clean = cleanExpression(expr);
+    if (!clean) {
+      return { ok: false, message: '', incomplete: true };
+    }
     try {
-      const tokens = new Tokenizer(expr).tokenize();
-      new Validator(tokens).validate();
-      const postfix = new Parser(tokens).toPostfix();
-      const value = new Evaluator(postfix).evaluate();
-      return { ok: true, value };
+      const value = rawEvaluate(clean);
+      return { ok: true, value, cleanedExpr: clean };
     } catch (err) {
-      return { ok: false, message: friendlyErrorMessage(err) };
+      const incompleteAttempt = tryEvaluateIncomplete(clean);
+      if (incompleteAttempt.ok) {
+        return {
+          ok: true,
+          value: incompleteAttempt.value,
+          incomplete: true,
+          cleanedExpr: clean
+        };
+      }
+      if (isIncompleteExpression(clean)) {
+        return { ok: false, message: '', incomplete: true, cleanedExpr: clean };
+      }
+      return { ok: false, message: friendlyErrorMessage(err), cleanedExpr: clean };
     }
   }
 
@@ -227,7 +311,8 @@
   /** Extract the most recently entered numeric amount from an expression string. */
   function getLastEnteredAmount(expr) {
     if (!expr) return null;
-    const matches = expr.replace(/,/g, '').match(/(?:\d+\.?\d*|\.\d+)/g);
+    const clean = cleanExpression(expr);
+    const matches = clean.match(/(?:\d+\.?\d*|\.\d+)/g);
     if (!matches || matches.length === 0) return null;
     for (let i = matches.length - 1; i >= 0; i--) {
       const str = matches[i];
@@ -263,7 +348,9 @@
       return;
     }
 
-    const currentAmount = getLastEnteredAmount(expr);
+    const clean = cleanExpression(expr);
+
+    const currentAmount = getLastEnteredAmount(clean);
     if (currentAmount !== null) {
       lastEnteredAmount = currentAmount;
     }
@@ -284,7 +371,7 @@
       if (inputValueWords) inputValueWords.textContent = 'Zero Only';
     }
 
-    const outcome = evaluateExpression(expr);
+    const outcome = evaluateExpression(clean);
 
     if (outcome.ok) {
       lastValidResult = outcome.value;
@@ -299,10 +386,10 @@
       if (totalEl) totalEl.textContent = formattedTotal;
       if (totalDisplayEl) totalDisplayEl.textContent = formattedTotal;
     } else {
-      // Keep showing the last good result in the main readout, but surface the error
-      // beneath rather than blanking everything (matches real calculator UX where you
-      // can keep typing toward a valid expression without losing your place).
-      if (outcome.message) {
+      // If incomplete expression mid-typing, keep running total and clear error banner
+      if (outcome.incomplete) {
+        errorRowEl.textContent = '';
+      } else if (outcome.message) {
         errorRowEl.textContent = outcome.message;
       } else {
         errorRowEl.textContent = '';
@@ -373,7 +460,7 @@
     if (!justEvaluated) return;
     justEvaluated = false;
 
-    const continuesFromResult = ['+', '-', '*', '/', '^', '%', '!'].includes(value);
+    const continuesFromResult = ['+', '-', '*', '/', '^', '%', '!', '×', '÷', 'x', 'X'].includes(value);
     const newText = (continuesFromResult && lastValidResult) ? lastValidResult.toString() : '';
     expressionEl.textContent = newText;
     if (!isTouchOrMobile()) {
@@ -420,13 +507,23 @@
   }
 
   function commitCalculation() {
-    const expr = getExpressionText().trim();
-    if (expr === '') return;
-    const outcome = evaluateExpression(expr);
-    refreshDisplay();
+    const rawExpr = getExpressionText().trim();
+    if (rawExpr === '') return;
+    const clean = cleanExpression(rawExpr);
+    let exprToCommit = clean.replace(/[+\-*/^.]+$/, '').trim();
+    if (!exprToCommit) exprToCommit = clean;
+
+    const outcome = evaluateExpression(exprToCommit);
     if (outcome.ok) {
-      addHistoryEntry(expr, outcome.value.toString());
+      setExpressionText(exprToCommit);
+      refreshDisplay();
+      addHistoryEntry(exprToCommit, outcome.value.toString());
       justEvaluated = true;
+    } else {
+      refreshDisplay();
+      if (outcome.message) {
+        errorRowEl.textContent = outcome.message;
+      }
     }
   }
 
@@ -468,7 +565,7 @@
     // Allow normal text editing within the expression field itself (arrows, home/end, etc.)
     // for anything we don't explicitly special-case below.
 
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' || e.key === '=') {
       e.preventDefault();
       commitCalculation();
       return;
@@ -539,6 +636,13 @@
 
     // Direct character keys (digits, operators) when focus isn't already in the
     // expression field (e.g. user clicked a button) — forward them in.
+    if ((e.key === 'x' || e.key === 'X') && document.activeElement !== expressionEl) {
+      e.preventDefault();
+      insertAtCursor('*');
+      refreshDisplay();
+      return;
+    }
+
     const directChars = '0123456789+-*/^!%().';
     if (directChars.includes(e.key) && document.activeElement !== expressionEl) {
       e.preventDefault();
@@ -555,9 +659,10 @@
     refreshDisplay();
   });
 
-  /** Strip whitespace/newlines from pasted content and normalise alternate symbols the Tokenizer also handles. */
+  /** Clean pasted text: strip formatting, backticks, commas, and normalise glyphs. */
   function sanitizePastedText(text) {
-    return text.replace(/\s+/g, '');
+    if (!text) return '';
+    return cleanExpression(text);
   }
 
   // ===========================================================================

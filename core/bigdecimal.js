@@ -358,8 +358,21 @@
     }
     let s = num.toString();
     if (s.includes('e') || s.includes('E')) {
-      // Expand exponential notation manually for very small/large doubles.
-      s = num.toFixed(20).replace(/0+$/, '').replace(/\.$/, '');
+      const [coeff, expStr] = s.split(/[eE]/);
+      const exp = parseInt(expStr, 10);
+      if (exp >= 0) {
+        const [intP, fracP = ''] = coeff.split('.');
+        if (exp >= fracP.length) {
+          s = intP + fracP + '0'.repeat(exp - fracP.length);
+        } else {
+          s = intP + fracP.slice(0, exp) + '.' + fracP.slice(exp);
+        }
+      } else {
+        const [intP, fracP = ''] = coeff.split('.');
+        const cleanInt = intP.replace(/^-/, '');
+        const sign = intP.startsWith('-') ? '-' : '';
+        s = sign + '0.' + '0'.repeat(-exp - 1) + cleanInt + fracP;
+      }
     }
     return s;
   }
